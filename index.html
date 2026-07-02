@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Pendataan Terpadu</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes fadeOut { from { transform: translateY(-10px); opacity: 1; } to { transform: translateY(-20px); opacity: 0; } }
+        .toast-enter { animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .toast-exit { animation: fadeOut 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        
+        /* Tema Gradient Segar: Teal ke Emerald */
+        .bg-gradient-fresh { background: linear-gradient(135deg, #0d9488 0%, #10b981 100%); }
+        
+        /* Kartu Melayang Lembut (Soft Floating Card) */
+        .floating-card {
+            background: #ffffff;
+            border-radius: 1.5rem;
+            box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.03);
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+        .floating-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 25px -4px rgba(0, 0, 0, 0.08);
+            border-color: rgba(16, 185, 129, 0.2);
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <nav class="bg-white shadow-sm sticky top-0 z-40 border-b border-slate-100">
+        <div class="w-full mx-auto px-4 sm:px-6 lg:px-10">
+            <div class="flex items-center justify-between h-20">
+                <div class="flex items-center gap-4">
+                    <div class="bg-gradient-fresh text-white p-3 rounded-2xl shadow-md shadow-teal-500/30">
+                        <i class="fa-solid fa-leaf text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-extrabold text-xl leading-tight tracking-tight text-slate-800">GEBYAR CKG 3 JULI 2026<span class="text-teal-500">.</span></h1>
+                        <p class="text-xs text-slate-500 font-medium tracking-wide">SISTEM REKAPAN PENDATAAN ENTRYAN CKG</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow w-full mx-auto px-4 sm:px-6 lg:px-10 xl:px-14 py-10">
+        
+        <div class="flex justify-center mb-12 relative z-10 w-full">
+            <div class="flex flex-col sm:flex-row bg-white p-2 rounded-3xl shadow-xl border border-slate-200/80 w-full sm:w-auto gap-3">
+                <button onclick="switchTab('dashboard')" id="tab-dashboard" class="py-4 px-6 md:px-14 rounded-2xl text-base md:text-lg font-extrabold transition-all duration-300 bg-teal-600 text-white shadow-lg shadow-teal-500/30 flex items-center justify-center gap-3 border border-transparent">
+                    <i class="fa-solid fa-chart-pie text-xl"></i> Dashboard Statistik
+                </button>
+                <button onclick="switchTab('form')" id="tab-form" class="py-4 px-6 md:px-14 rounded-2xl text-base md:text-lg font-extrabold transition-all duration-300 text-slate-500 bg-transparent hover:text-slate-800 hover:bg-slate-100 flex items-center justify-center gap-3 border border-transparent">
+                    <i class="fa-solid fa-pen-nib text-xl"></i> Entry Data Baru
+                </button>
+            </div>
+        </div>
+
+        <div id="view-dashboard" class="space-y-8 animate-[fadeIn_0.3s_ease-out]">
+            
+            <!-- Summary Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+                <!-- Card Total -->
+                <div class="floating-card p-6 flex flex-col justify-between relative overflow-hidden group">
+                    <div class="flex items-center gap-4 mb-4 relative z-10">
+                        <div class="bg-teal-50 text-teal-600 w-12 h-12 flex items-center justify-center rounded-2xl group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-database text-lg"></i>
+                        </div>
+                        <p class="text-sm text-slate-500 font-bold uppercase tracking-wider">Total Entry</p>
+                    </div>
+                    <h3 class="text-4xl font-black text-slate-800 relative z-10" id="stat-total">0</h3>
+                    <div class="absolute -right-4 -bottom-4 opacity-[0.03] text-teal-900 group-hover:opacity-10 transition-opacity"><i class="fa-solid fa-chart-line text-9xl"></i></div>
+                </div>
+                
+                <!-- Card Petugas -->
+                <div class="floating-card p-6 flex flex-col justify-between relative overflow-hidden group">
+                    <div class="flex items-center gap-4 mb-4 relative z-10">
+                        <div class="bg-sky-50 text-sky-600 w-12 h-12 flex items-center justify-center rounded-2xl group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-user-shield text-lg"></i>
+                        </div>
+                        <p class="text-sm text-slate-500 font-bold uppercase tracking-wider">Petugas Aktif</p>
+                    </div>
+                    <h3 class="text-4xl font-black text-slate-800 relative z-10" id="stat-petugas">0</h3>
+                    <div class="absolute -right-4 -bottom-4 opacity-[0.03] text-sky-900 group-hover:opacity-10 transition-opacity"><i class="fa-solid fa-users text-9xl"></i></div>
+                </div>
+
+                <!-- Card CKG UMUM -->
+                <div class="floating-card p-6 flex flex-col justify-between relative overflow-hidden group">
+                    <div class="flex items-center gap-4 mb-4 relative z-10">
+                        <div class="bg-indigo-50 text-indigo-600 w-12 h-12 flex items-center justify-center rounded-2xl group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-notes-medical text-lg"></i>
+                        </div>
+                        <p class="text-sm text-slate-500 font-bold uppercase tracking-wider">CKG UMUM</p>
+                    </div>
+                    <h3 class="text-4xl font-black text-slate-800 relative z-10" id="stat-ckg-umum">0</h3>
+                    <div class="absolute -right-4 -bottom-4 opacity-[0.03] text-indigo-900 group-hover:opacity-10 transition-opacity"><i class="fa-solid fa-truck-medical text-9xl"></i></div>
+                </div>
+
+                <!-- Card CKG SEKOLAH -->
+                <div class="floating-card p-6 flex flex-col justify-between relative overflow-hidden group">
+                    <div class="flex items-center gap-4 mb-4 relative z-10">
+                        <div class="bg-amber-50 text-amber-600 w-12 h-12 flex items-center justify-center rounded-2xl group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-school text-sm"></i>
+                        </div>
+                        <p class="text-sm text-slate-500 font-bold uppercase tracking-wider">CKG SEKOLAH</p>
+                    </div>
+                    <h3 class="text-4xl font-black text-slate-800 relative z-10" id="stat-ckg-sekolah">0</h3>
+                    <div class="absolute -right-4 -bottom-4 opacity-[0.03] text-amber-900 group-hover:opacity-10 transition-opacity"><i class="fa-solid fa-building-columns text-9xl"></i></div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                <!-- Grafik Utama -->
+                <div class="floating-card p-6 xl:col-span-2">
+                    <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+                        <h3 class="text-lg font-extrabold text-slate-700 flex items-center gap-3">
+                            <span class="bg-slate-100 text-slate-600 p-2 rounded-xl"><i class="fa-solid fa-chart-simple"></i></span>
+                            Total Aktivitas Entry per Petugas / Desa
+                        </h3>
+                    </div>
+                    <div class="w-full h-80 relative"><canvas id="petugasChart"></canvas></div>
+                </div>
+
+                <!-- Grafik CKG UMUM -->
+                <div class="floating-card p-6">
+                    <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+                        <h3 class="text-base font-extrabold text-slate-700 flex items-center gap-3">
+                            <span class="bg-indigo-50 text-indigo-600 p-2 rounded-xl"><i class="fa-solid fa-notes-medical"></i></span>
+                            Distribusi CKG UMUM
+                        </h3>
+                    </div>
+                    <div class="w-full h-64 relative"><canvas id="umumChart"></canvas></div>
+                </div>
+
+                <!-- Grafik CKG SEKOLAH -->
+                <div class="floating-card p-6">
+                    <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+                        <h3 class="text-base font-extrabold text-slate-700 flex items-center gap-3">
+                            <span class="bg-amber-50 text-amber-600 p-2 rounded-xl"><i class="fa-solid fa-school"></i></span>
+                            Distribusi CKG SEKOLAH
+                        </h3>
+                    </div>
+                    <div class="w-full h-64 relative"><canvas id="sekolahChart"></canvas></div>
+                </div>
+            </div>
+
+            <div class="floating-card overflow-hidden">
+                <div class="px-6 py-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white">
+                    <div>
+                        <h3 class="text-xl font-extrabold text-slate-800 flex items-center gap-2">
+                            Rekapitulasi Data Live
+                        </h3>
+                        <p class="text-sm text-slate-500 mt-1">Data ditarik secara realtime dari server.</p>
+                    </div>
+                    
+                    <div class="flex gap-3 w-full sm:w-auto">
+                        <button onclick="loadData()" class="flex-1 sm:flex-none text-sm text-teal-700 hover:text-teal-800 bg-teal-50 hover:bg-teal-100 font-bold px-5 py-2.5 rounded-xl transition-all flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-rotate"></i> Refresh
+                        </button>
+                        <button onclick="downloadExcel()" class="flex-1 sm:flex-none text-sm text-white bg-slate-800 hover:bg-slate-900 font-bold px-5 py-2.5 rounded-xl transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-cloud-arrow-down"></i> Export Excel
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="custom-scrollbar overflow-x-auto p-2">
+                    <table class="w-full text-left border-collapse whitespace-nowrap">
+                        <thead>
+                            <tr class="text-slate-500 text-xs uppercase tracking-wider font-extrabold border-b border-slate-100">
+                                <th class="px-6 py-4">Waktu</th>
+                                <th class="px-6 py-4">Petugas / Desa</th>
+                                <th class="px-6 py-4">Nama Pasien</th>
+                                <th class="px-6 py-4">NIK</th>
+                                <th class="px-6 py-4">Jenis</th>
+                                <th class="px-6 py-4">Etiket</th>
+                                <th class="px-6 py-4">Keterangan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body" class="text-sm">
+                            <tr>
+                                <td colspan="7" class="px-6 py-20 text-center text-slate-400">
+                                    <i class="fa-solid fa-leaf fa-bounce text-4xl mb-4 text-teal-400"></i>
+                                    <p class="text-base font-bold">Sinkronisasi dengan Server...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-form" class="hidden animate-[fadeIn_0.3s_ease-out]">
+            <div class="max-w-4xl mx-auto floating-card overflow-hidden">
+                <!-- Header Form Custom -->
+                <div class="bg-gradient-fresh px-8 py-10 flex items-center gap-5 relative overflow-hidden">
+                    <div class="absolute right-0 top-0 opacity-10 transform translate-x-4 -translate-y-4">
+                        <i class="fa-solid fa-feather text-9xl text-white"></i>
+                    </div>
+                    
+                    <div class="bg-white/20 text-white p-4 rounded-2xl backdrop-blur-md relative z-10 shadow-inner">
+                        <i class="fa-solid fa-file-signature text-3xl"></i>
+                    </div>
+                    <div class="relative z-10 text-white">
+                        <h2 class="text-3xl font-extrabold tracking-tight">Form Input Data</h2>
+                        <p class="text-teal-50 text-sm mt-1 opacity-90 font-medium">Data akan langsung tersimpan ke Database Server.</p>
+                    </div>
+                </div>
+                
+                <form id="dataForm" onsubmit="submitForm(event)" class="px-8 py-10 space-y-8 bg-white">
+                    
+                    <!-- Input Petugas (Kustom Dropdown) -->
+                    <div class="group">
+                        <label for="petugas" class="block text-sm font-bold text-slate-700 mb-2">Nama Petugas / Desa <span class="text-red-500">*</span></label>
+                        <div class="relative" id="dropdown-container">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-teal-500 transition-colors">
+                                <i class="fa-solid fa-user-tie"></i>
+                            </div>
+                            <input type="text" id="petugas" required autocomplete="off" placeholder="Ketik nama atau pilih dari riwayat..." 
+                                class="w-full pl-12 pr-10 py-3.5 bg-slate-50/50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 focus:bg-white outline-none transition-all placeholder:text-slate-400 text-slate-700 font-bold text-base"
+                                onfocus="showDropdown()" oninput="filterDropdown()" onblur="hideDropdownDelayed()">
+                            <div class="absolute inset-y-0 right-0 pr-4 flex items-center cursor-pointer text-slate-400 hover:text-teal-600 transition-colors" onclick="toggleDropdown()">
+                                <i class="fa-solid fa-caret-down"></i>
+                            </div>
+                            
+                            <!-- Custom Dropdown List -->
+                        <ul id="petugas-list" class="absolute z-50 w-full mt-2 bg-white border border-slate-100 rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] max-h-60 overflow-y-auto custom-scrollbar hidden py-2">
+                            <li class="px-5 py-3 text-sm text-slate-400 italic text-center">Memuat riwayat...</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Input Jenis Entry (Radio) -->
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-3">Jenis Entry <span class="text-red-500">*</span></label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <label class="relative flex items-center p-5 border-2 border-slate-100 rounded-2xl cursor-pointer hover:bg-orange-50 transition-all [&:has(input:checked)]:bg-orange-500 [&:has(input:checked)]:border-orange-600 [&:has(input:checked)]:shadow-md group">
+                            <input type="radio" name="jenis" value="CKG UMUM" required class="peer sr-only">
+                            <div class="flex items-center gap-4">
+                                <div class="w-6 h-6 rounded-full border-2 border-slate-300 peer-checked:border-white peer-checked:border-[7px] transition-all bg-white shadow-sm"></div>
+                                <span class="font-extrabold text-slate-600 peer-checked:text-white text-base md:text-lg transition-colors">CKG UMUM</span>
+                            </div>
+                        </label>
+                        
+                        <label class="relative flex items-center p-5 border-2 border-slate-100 rounded-2xl cursor-pointer hover:bg-orange-50 transition-all [&:has(input:checked)]:bg-orange-500 [&:has(input:checked)]:border-orange-600 [&:has(input:checked)]:shadow-md group">
+                            <input type="radio" name="jenis" value="CKG SEKOLAH" required class="peer sr-only">
+                            <div class="flex items-center gap-4">
+                                <div class="w-6 h-6 rounded-full border-2 border-slate-300 peer-checked:border-white peer-checked:border-[7px] transition-all bg-white shadow-sm"></div>
+                                <span class="font-extrabold text-slate-600 peer-checked:text-white text-base md:text-lg transition-colors">CKG SEKOLAH</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Input Nama -->
+                        <div class="group">
+                            <label for="nama" class="block text-sm font-bold text-slate-700 mb-2">Nama Pasien/Klien <span class="text-red-500">*</span></label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-teal-500 transition-colors">
+                                    <i class="fa-solid fa-address-card"></i>
+                                </div>
+                                <input type="text" id="nama" required placeholder="Sesuai identitas" 
+                                    class="w-full pl-12 pr-4 py-3.5 bg-slate-50/50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 outline-none transition-all placeholder:text-slate-400 font-semibold text-slate-700">
+                            </div>
+                        </div>
+
+                        <!-- Input NIK -->
+                        <div class="group">
+                            <label for="nik" class="block text-sm font-bold text-slate-700 mb-2">Nomor Induk (NIK) <span class="text-red-500">*</span></label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-teal-500 transition-colors">
+                                    <i class="fa-solid fa-fingerprint"></i>
+                                </div>
+                                <input type="text" id="nik" required pattern="[0-9]{16}" title="Harus 16 digit angka" placeholder="16 Digit Angka" maxlength="16"
+                                    class="w-full pl-12 pr-4 py-3.5 bg-slate-50/50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 outline-none transition-all placeholder:text-slate-400 font-semibold text-slate-700">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Input Etiket -->
+                    <div class="group">
+                        <label for="etiket" class="block text-sm font-bold text-slate-700 mb-2">Data Etiket <span class="text-slate-400 font-normal">(Opsional)</span></label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-teal-500 transition-colors">
+                                <i class="fa-solid fa-tags"></i>
+                            </div>
+                            <input type="text" id="etiket" placeholder="Masukkan kode etiket" 
+                                class="w-full pl-12 pr-4 py-3.5 bg-slate-50/50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 outline-none transition-all placeholder:text-slate-400 font-semibold text-slate-700">
+                        </div>
+                    </div>
+
+                    <!-- Input Keterangan -->
+                    <div>
+                        <label for="keterangan" class="block text-sm font-bold text-slate-700 mb-2">Keterangan <span class="text-slate-400 font-normal">(Opsional)</span></label>
+                        <textarea id="keterangan" rows="3" placeholder="Catatan khusus..."
+                            class="w-full p-4 bg-slate-50/50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 outline-none transition-all placeholder:text-slate-400 font-semibold text-slate-700"></textarea>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="pt-4">
+                        <button type="submit" id="btn-submit" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-extrabold py-4 px-4 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex justify-center items-center gap-3 text-lg">
+                            <i class="fa-solid fa-paper-plane"></i> Kirim ke Database Server
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-3 pointer-events-none"></div>
+
+    <script>
+        
+        // PENTING: GANTI URL DI BAWAH INI DENGAN URL WEB APP GOOGLE SCRIPT ANDA!
+        // Contoh: 'https://script.google.com/macros/s/AKfycby.../exec'
+        const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbzc4ZFRKX3SXIHHxSg8XgUyaxE4yUm1JvZTBy4OCM39v-Eim2InqLkJh62ghU4Bcxm1VQ/exec'; 
+        
+        let globalData = [];
+        let uniquePetugasList = []; 
+        let petugasChartInstance = null, umumChartInstance = null, sekolahChartInstance = null;
+
+        // Palet warna yang segar & modern untuk grafik
+        const chartColors = [
+            'rgba(16, 185, 129, 0.85)',  // Emerald
+            'rgba(14, 165, 233, 0.85)',  // Sky Blue
+            'rgba(245, 158, 11, 0.85)',  // Amber
+            'rgba(99, 102, 241, 0.85)',  // Indigo
+            'rgba(236, 72, 153, 0.85)',  // Pink
+            'rgba(20, 184, 166, 0.85)',  // Teal
+            'rgba(168, 85, 247, 0.85)',  // Purple
+            'rgba(249, 115, 22, 0.85)',  // Orange
+            'rgba(6, 182, 212, 0.85)',   // Cyan
+            'rgba(139, 92, 246, 0.85)'   // Violet
+        ];
+
+        document.addEventListener('DOMContentLoaded', () => { loadData(); });
+
+        function switchTab(tabId) {
+            const btnDashboard = document.getElementById('tab-dashboard');
+            const btnForm = document.getElementById('tab-form');
+            const viewDashboard = document.getElementById('view-dashboard');
+            const viewForm = document.getElementById('view-form');
+            
+            const activeClass = ['bg-teal-600', 'text-white', 'shadow-lg', 'shadow-teal-500/30'];
+            const inactiveClass = ['text-slate-500', 'bg-transparent', 'hover:text-slate-800', 'hover:bg-slate-100'];
+
+            if (tabId === 'dashboard') {
+                viewDashboard.classList.remove('hidden');
+                viewForm.classList.add('hidden');
+                btnDashboard.classList.add(...activeClass); btnDashboard.classList.remove(...inactiveClass);
+                btnForm.classList.remove(...activeClass); btnForm.classList.add(...inactiveClass);
+                loadData(); 
+            } else {
+                viewDashboard.classList.add('hidden');
+                viewForm.classList.remove('hidden');
+                btnForm.classList.add(...activeClass); btnForm.classList.remove(...inactiveClass);
+                btnDashboard.classList.remove(...activeClass); btnDashboard.classList.add(...inactiveClass);
+            }
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const bgClass = type === 'success' ? 'bg-slate-800' : 'bg-red-600';
+            const icon = type === 'success' ? '<i class="fa-solid fa-circle-check text-teal-400"></i>' : '<i class="fa-solid fa-circle-xmark text-white"></i>';
+
+            toast.className = `${bgClass} text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 toast-enter max-w-sm pointer-events-auto font-bold text-sm border border-white/10`;
+            toast.innerHTML = `${icon} <span>${message}</span>`;
+            
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.replace('toast-enter', 'toast-exit');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // Custom Dropdown Logic
+        function renderDropdownItems(list) {
+            const ul = document.getElementById('petugas-list');
+            ul.innerHTML = '';
+            
+            if(list.length === 0) {
+                ul.innerHTML = '<li class="px-5 py-3 text-sm text-slate-400 italic text-center">Belum ada riwayat / Data tidak ditemukan</li>';
+                return;
+            }
+
+            list.forEach(petugas => {
+                const li = document.createElement('li');
+                li.className = 'px-5 py-3 text-base text-slate-700 hover:bg-teal-50 hover:text-teal-700 cursor-pointer transition-colors flex items-center gap-3 font-bold mx-2 rounded-xl';
+                li.innerHTML = `<i class="fa-solid fa-clock-rotate-left text-slate-300"></i> <span>${petugas}</span>`;
+                li.onmousedown = (e) => {
+                    e.preventDefault(); 
+                    document.getElementById('petugas').value = petugas;
+                    hideDropdown();
+                };
+                ul.appendChild(li);
+            });
+        }
+
+        function filterDropdown() {
+            const val = document.getElementById('petugas').value.toLowerCase();
+            const filtered = uniquePetugasList.filter(p => p.toLowerCase().includes(val));
+            renderDropdownItems(filtered);
+            showDropdown();
+        }
+
+        function showDropdown() { document.getElementById('petugas-list').classList.remove('hidden'); }
+        function hideDropdown() { document.getElementById('petugas-list').classList.add('hidden'); }
+        function hideDropdownDelayed() { setTimeout(hideDropdown, 200); }
+        function toggleDropdown() {
+            const list = document.getElementById('petugas-list');
+            if(list.classList.contains('hidden')) { filterDropdown(); showDropdown(); document.getElementById('petugas').focus(); } 
+            else { hideDropdown(); }
+        }
+
+        async function loadData() {
+            renderLoading();
+            
+            if (!GAS_API_URL) {
+                // FALLBACK PREVIEW JIKA URL KOSONG
+                setTimeout(() => { renderTable(globalData); }, 800);
+                return;
+            }
+
+            try {
+                const response = await fetch(GAS_API_URL);
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    globalData = result.data;
+                    renderTable(globalData);
+                } else {
+                    showToast('Gagal membaca data', 'error');
+                    renderEmptyTable();
+                }
+            } catch (error) {
+                showToast('Koneksi terputus. Pastikan URL API benar.', 'error');
+                renderEmptyTable();
+            }
+        }
+
+        function renderLoading() {
+            document.getElementById('table-body').innerHTML = `
+                <tr>
+                    <td colspan="7" class="px-6 py-20 text-center text-slate-400">
+                        <i class="fa-solid fa-leaf fa-bounce text-4xl mb-4 text-teal-400"></i>
+                        <p class="text-base font-bold">Sinkronisasi dengan Server...</p>
+                    </td>
+                </tr>`;
+        }
+
+        function renderEmptyTable() {
+            document.getElementById('table-body').innerHTML = `
+                <tr>
+                    <td colspan="7" class="px-6 py-20 text-center text-slate-400">
+                        <div class="bg-slate-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fa-solid fa-box-open text-3xl text-slate-300"></i>
+                        </div>
+                        <p class="text-lg font-bold text-slate-600 mb-1">Database Kosong</p>
+                        <p class="text-sm">Belum ada data yang tersimpan di server.</p>
+                    </td>
+                </tr>`;
+        }
+
+        function renderTable(dataArray) {
+            const tbody = document.getElementById('table-body');
+            document.getElementById('stat-total').innerText = dataArray.length;
+            
+            const uniquePetugasSet = new Set();
+            let countUmum = 0, countSekolah = 0;
+
+            dataArray.forEach(item => {
+                if(item.petugas) uniquePetugasSet.add(item.petugas);
+                if(item.jenis === 'CKG UMUM') countUmum++;
+                if(item.jenis === 'CKG SEKOLAH') countSekolah++;
+            });
+
+            document.getElementById('stat-petugas').innerText = uniquePetugasSet.size;
+            document.getElementById('stat-ckg-umum').innerText = countUmum;
+            document.getElementById('stat-ckg-sekolah').innerText = countSekolah;
+
+            uniquePetugasList = Array.from(uniquePetugasSet).sort();
+            renderDropdownItems(uniquePetugasList);
+            updateCharts(dataArray, uniquePetugasList);
+
+            if (!dataArray || dataArray.length === 0) { renderEmptyTable(); return; }
+
+            tbody.innerHTML = '';
+            dataArray.forEach((row, index) => {
+                const tr = document.createElement('tr');
+                tr.className = `border-b border-slate-50 hover:bg-slate-50/80 transition-colors bg-white`;
+                
+                const isSekolah = row.jenis === 'CKG SEKOLAH';
+                const badgeClass = isSekolah ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-indigo-50 text-indigo-700 border-indigo-200';
+                const badgeIcon = isSekolah ? 'fa-building-columns' : 'fa-notes-medical';
+
+                tr.innerHTML = `
+                    <td class="px-6 py-4 text-slate-500 text-sm whitespace-nowrap"><i class="fa-regular fa-clock opacity-50 mr-1"></i> ${row.waktu}</td>
+                    <td class="px-6 py-4 font-extrabold text-slate-700">${row.petugas}</td>
+                    <td class="px-6 py-4 font-extrabold text-teal-700">${row.nama}</td>
+                    <td class="px-6 py-4 text-slate-500 font-mono text-sm">${row.nik}</td>
+                    <td class="px-6 py-4">
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border ${badgeClass}">
+                            <i class="fa-solid ${badgeIcon}"></i> ${row.jenis || '-'}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4">
+                        ${row.etiket ? `<span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">${row.etiket}</span>` : '-'}
+                    </td>
+                    <td class="px-6 py-4 text-slate-500 text-sm truncate max-w-[150px]" title="${row.keterangan || '-'}">${row.keterangan || '-'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function createOrUpdateChart(instance, canvasId, labels, dataPoints, backgroundColors) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            if (instance) instance.destroy();
+            return new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Frekuensi Entry',
+                        data: dataPoints,
+                        backgroundColor: backgroundColors,
+                        borderWidth: 0,
+                        borderRadius: 8,
+                        barPercentage: 0.55
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 }, grid: { color: '#f1f5f9', borderDash: [5, 5] } },
+                        x: { grid: { display: false }, ticks: { font: { weight: 'bold' } } }
+                    },
+                    plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1e293b', padding: 14, cornerRadius: 10, titleFont: { size: 14 }, bodyFont: { size: 13, weight: 'bold' } } }
+                }
+            });
+        }
+
+        function updateCharts(dataArray, sortedPetugas) {
+            const totalCount = {}, umumCount = {}, sekolahCount = {};
+            sortedPetugas.forEach(p => { totalCount[p] = 0; umumCount[p] = 0; sekolahCount[p] = 0; });
+            dataArray.forEach(item => {
+                if (item.petugas) {
+                    totalCount[item.petugas]++;
+                    if (item.jenis === 'CKG UMUM') umumCount[item.petugas]++;
+                    if (item.jenis === 'CKG SEKOLAH') sekolahCount[item.petugas]++;
+                }
+            });
+
+            // Data untuk Chart Utama (Total)
+            const orderedPetugas = [...sortedPetugas].sort((a, b) => totalCount[b] - totalCount[a]);
+            const bgColors = orderedPetugas.map((_, i) => chartColors[i % chartColors.length]);
+            
+            // Filter Data Hanya untuk Petugas yang Punya Entri UMUM (>0)
+            const petugasUmum = orderedPetugas.filter(p => umumCount[p] > 0);
+            const dataUmum = petugasUmum.map(p => umumCount[p]);
+            const colorsUmum = petugasUmum.map((_, i) => chartColors[i % chartColors.length]);
+
+            // Filter Data Hanya untuk Petugas yang Punya Entri SEKOLAH (>0)
+            const petugasSekolah = orderedPetugas.filter(p => sekolahCount[p] > 0);
+            const dataSekolah = petugasSekolah.map(p => sekolahCount[p]);
+            const colorsSekolah = petugasSekolah.map((_, i) => chartColors[i % chartColors.length]);
+
+            // Render ke Canvas
+            petugasChartInstance = createOrUpdateChart(petugasChartInstance, 'petugasChart', orderedPetugas, orderedPetugas.map(p => totalCount[p]), bgColors);
+            umumChartInstance = createOrUpdateChart(umumChartInstance, 'umumChart', petugasUmum, dataUmum, colorsUmum);
+            sekolahChartInstance = createOrUpdateChart(sekolahChartInstance, 'sekolahChart', petugasSekolah, dataSekolah, colorsSekolah);
+        }
+
+        function downloadExcel() {
+            if(!globalData || globalData.length === 0) { showToast('Database kosong, tidak ada data diunduh', 'error'); return; }
+            try {
+                showToast('Mempersiapkan File Excel...', 'success');
+                const wb = XLSX.utils.book_new();
+                
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(globalData), "Master Data");
+                
+                const dataUmum = globalData.filter(row => row.jenis === 'CKG UMUM');
+                if(dataUmum.length > 0) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(dataUmum), "Rekap CKG UMUM");
+
+                const dataSekolah = globalData.filter(row => row.jenis === 'CKG SEKOLAH');
+                if(dataSekolah.length > 0) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(dataSekolah), "Rekap CKG SEKOLAH");
+
+                const groupedData = {};
+                globalData.forEach(row => {
+                    if(!groupedData[row.petugas]) groupedData[row.petugas] = [];
+                    groupedData[row.petugas].push(row);
+                });
+
+                for(let petugas in groupedData) {
+                    let sheetName = petugas.substring(0, 31).replace(/[\\\/\?\*\[\]\:]/g, '') || "Data Tanpa Nama";
+                    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(groupedData[petugas]), sheetName);
+                }
+
+                XLSX.writeFile(wb, `Export_Pendataan_${new Date().getTime()}.xlsx`);
+            } catch (error) { showToast('Gagal membuat file Excel', 'error'); }
+        }
+
+        async function submitForm(event) {
+            event.preventDefault();
+            const btnSubmit = document.getElementById('btn-submit');
+            const form = document.getElementById('dataForm');
+            const jenisRadio = document.querySelector('input[name="jenis"]:checked');
+            
+            const dataEntry = {
+                petugas: document.getElementById('petugas').value.trim(),
+                jenis: jenisRadio ? jenisRadio.value : '',
+                nama: document.getElementById('nama').value.trim(),
+                nik: document.getElementById('nik').value.trim(),
+                etiket: document.getElementById('etiket').value.trim(),
+                keterangan: document.getElementById('keterangan').value.trim()
+            };
+
+            if(dataEntry.nik.length !== 16) { showToast('Format NIK Salah! Wajib 16 digit.', 'error'); return; }
+
+            const originalBtnText = btnSubmit.innerHTML;
+            btnSubmit.innerHTML = `<i class="fa-solid fa-leaf fa-bounce"></i> Mengirim Data...`;
+            btnSubmit.disabled = true;
+            btnSubmit.classList.add('opacity-90', 'cursor-not-allowed', 'scale-95');
+
+            if (!GAS_API_URL) {
+                // FALLBACK PREVIEW BILA URL API KOSONG
+                setTimeout(() => {
+                    resetFormState(btnSubmit, originalBtnText);
+                    dataEntry.waktu = new Date().toLocaleString('id-ID');
+                    globalData.unshift(dataEntry); 
+                    showToast('Sukses (Mode Preview)', 'success');
+                    form.reset();
+                    setTimeout(() => switchTab('dashboard'), 800);
+                }, 1500);
+                return;
+            }
+
+            try {
+                const response = await fetch(GAS_API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(dataEntry) // Mengirim ke doPost
+                });
+                const result = await response.json();
+                
+                resetFormState(btnSubmit, originalBtnText);
+                if (result.status === 'success') {
+                    showToast('Terkirim ke Server!', 'success');
+                    form.reset();
+                    setTimeout(() => switchTab('dashboard'), 800);
+                } else {
+                    showToast(result.message, 'error');
+                }
+            } catch (error) {
+                resetFormState(btnSubmit, originalBtnText);
+                showToast('Koneksi terputus. Gagal menyimpan.', 'error');
+            }
+        }
+
+        function resetFormState(btn, originalText) {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            btn.classList.remove('opacity-90', 'cursor-not-allowed', 'scale-95');
+        }
+    </script>
+</body>
+</html>
